@@ -1,13 +1,11 @@
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
-import torch.optim.lr_scheduler as lr_scheduler
-import diffusion
 import yaml
 from tqdm import tqdm
+from prodigyopt import Prodigy
 
 
 def load_config(config_path):
@@ -22,9 +20,13 @@ num_samples = config['num_samples']
 # bmax=config['bmax']
 learning_rate = config['learning_rate']
 epochs = config['epochs']
+optimizer = config['optimizer']
 
 
 def loss_function(score_net, x, sde, eps=1e-5):
+    """"
+    Loss function for score matching
+    """
     random_t = torch.rand(x.shape[0], device=x.device) * (1. - eps) + eps
     z = torch.randn_like(x, device=x.device)
     mu, std = sde.marginal(x, random_t)
@@ -43,8 +45,23 @@ def loss_function(score_net, x, sde, eps=1e-5):
     return loss
 
 
+def get_optimizer(model):
+    """
+    Returns the optimizer based on the config file
+    """
+    if optimizer == 'adam':
+        return torch.optim.Adam(model.parameters(), lr=learning_rate)
+    else:
+        return Prodigy(model.parameters())
+
+
 def train_score_network(dataloader, score_net, sde, epochs=epochs):
-    optimizer = optim.Adam(score_net.parameters(), lr=learning_rate)
+    """
+    Trains the score network
+
+    """
+
+    optimizer = get_optimizer(score_net)
     avg = 0
     for epoch in tqdm(range(epochs)):
         for x_batch, in dataloader:
@@ -57,7 +74,7 @@ def train_score_network(dataloader, score_net, sde, epochs=epochs):
         if (epoch % 100 == 0):
             tqdm.write(f'Epoch: {epoch} and Loss: {avg/(8*100)}')
             avg = 0
-        if (epoch % 1000 == 0 and epoch != 0):
+        if ((epoch % 1000 == 0 and epoch != 0) or epoch == epochs-1):
             samples = sde.backward_diffusion(score_net)
             data = x_batch.detach().numpy()
             samples_np = samples.detach().numpy()
@@ -68,10 +85,11 @@ def train_score_network(dataloader, score_net, sde, epochs=epochs):
             plt.show()
 
 
-def train_score_network_mnist(dataloader, score_net, sde, optimizer, epochs=epochs):
+def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs):
+    optimizer = get_optimizer(score_net)
     avg = 0
     device = sde.device
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
 
         if (epoch % 10 == 0):
             with torch.no_grad():
@@ -96,10 +114,11 @@ def train_score_network_mnist(dataloader, score_net, sde, optimizer, epochs=epoc
         torch.save(score_net.state_dict(), f'./epoch{epoch}')
 
 
-def train_score_network_cifar(dataloader, score_net, sde, optimizer, epochs=epochs):
+def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
+    optimizer = get_optimizer(score_net)
     avg = 0
     device = sde.device
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
 
         if (epoch % 10 == 0):
             with torch.no_grad():

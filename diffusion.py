@@ -1,17 +1,7 @@
 import torch
 import numpy as np
-import yaml
 import matplotlib.pyplot as plt
 from abc import abstractmethod, ABC
-
-# Function to load configurations
-def load_config(config_path):
-    with open(config_path, 'r') as file:
-        return yaml.safe_load(file)
-
-
-# Load the configuration
-config = load_config('config.yaml')
 
 
 def match_dim(x, a):
@@ -26,13 +16,13 @@ def match_dim(x, a):
 
 
 class SDE(ABC):
-    def __init__(self, num_steps, T, device='cpu'):
+    def __init__(self, num_steps, T=1.0, device='cpu'):
         '''
         num_step (number of discretized steps )
         '''
         super().__init__()
         self.num_steps = num_steps
-        self.T = 1.0
+        self.T = T
         self.device = device
 
     @abstractmethod
@@ -76,16 +66,21 @@ class SDE(ABC):
 
         num_steps = self.num_steps if num_steps is None else num_steps
 
+        # Compute indices
+        assert num_steps > 0, 'Number of steps must be positive'
+        indices = np.arange(num_steps)
+
         dt = self.T / num_steps  # Calculate the timestep
 
-        indices = np.arange(num_steps)
-        time_steps = 1 + indices / (num_steps - 1) * (dt - 1)
+        time_steps = np.flip((indices + 1) * dt)
+
+        dt = torch.tensor(dt)
 
         for t in reversed(time_steps):
             # Apply the OU process to the data
             drift, diffusion = self.drift_diffusion(x, t)
             x = x + drift * dt + diffusion * \
-                torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
+                torch.sqrt(dt) * torch.randn_like(x)
             x_diffused.append(x.numpy())
         return x_diffused
 
@@ -119,16 +114,16 @@ class SDE(ABC):
         device = self.device
         batch_size = data_shape[0]
         x = self.sample_prior(data_shape).to(device)
-        dt = torch.tensor(1.0 / self.num_steps).to(device)
+        dt = torch.tensor(self.T / self.num_steps).to(device)
         indices = torch.arange(self.num_steps).to(device)
-        time_steps = 1 + indices / (self.num_steps - 1) * (dt - 1)
+        time_steps = torch.flip((indices + 1) * dt, dims=(0,))  # Reverse time
 
         for t in time_steps:
             t1 = torch.ones(batch_size, device=device) * t
             score = score_net(x, t1)
             drift, diffusion = self.drift_diffusion(x, t)
             x = x - (drift - (diffusion**2)*score)*dt + diffusion * \
-                torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
+                torch.sqrt(dt) * torch.randn_like(x)
 
         return x
 
