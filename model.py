@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class SinusoidalEmbedding(nn.Module):
     def __init__(self, size: int, scale: float = 1.0):
         super().__init__()
@@ -19,13 +20,14 @@ class SinusoidalEmbedding(nn.Module):
 
     def __len__(self):
         return self.size
-    
+
+
 class PositionalEmbedding(nn.Module):
     def __init__(self, size: int,  **kwargs):
         super().__init__()
 
         self.layer = SinusoidalEmbedding(size, **kwargs)
-        
+
     def forward(self, x: torch.Tensor):
         return self.layer(x)
 
@@ -64,4 +66,3 @@ class MLP(nn.Module):
         x = torch.cat((x1_emb, x2_emb, t_emb), dim=-1)
         x = self.joint_mlp(x)
         return x
-    
