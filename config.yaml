@@ -4,7 +4,7 @@ hidden_layers: 3
 emb_size: 128
 # bmin: 0.1 # Not used anymore
 # bmax: 20 # Not used anymore
-epochs: 100000
+epochs: 10000
 num_samples: 500
 num_steps: 1000
 learning_rate: .0001
