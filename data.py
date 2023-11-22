@@ -7,13 +7,15 @@ def load_config(config_path):
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
+
 config = load_config('config.yaml')
-num_samples=config['num_samples']
+num_samples = config['num_samples']
+
 
 def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, radius=5.0):
     """
     Generates a mixture of 2D Gaussian distributions around the origin (0,0).
-    
+
     :param num_samples: Total number of samples to generate.
     :param centers: Number of Gaussian centers.
     :param spread: Standard deviation of each Gaussian.
@@ -31,7 +33,8 @@ def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, ra
         center = np.array([center_x, center_y])
 
         # Generate samples for a Gaussian
-        samples = np.random.normal(loc=center, scale=spread, size=(samples_per_center, 2))
+        samples = np.random.normal(
+            loc=center, scale=spread, size=(samples_per_center, 2))
         data.append(samples)
 
     # Concatenate all samples and shuffle
@@ -39,6 +42,7 @@ def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, ra
     np.random.shuffle(data)
 
     return torch.tensor(data, dtype=torch.float32)
+
 
 def generate_happy_face(num_samples=1000, spread=0.01):
     """

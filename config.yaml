@@ -2,10 +2,12 @@
 hidden_size: 128
 hidden_layers: 3
 emb_size: 128
-bmin: 0.1
-bmax: 20
-epochs: 100000
+# bmin: 0.1 # Not used anymore
+# bmax: 20 # Not used anymore
+epochs: 2000
 num_samples: 500
 num_steps: 1000
 learning_rate: .0001
+# optimizer: adam
+optimizer: prodigy
 
