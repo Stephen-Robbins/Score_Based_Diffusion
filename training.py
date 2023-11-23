@@ -53,6 +53,7 @@ def get_optimizer(model):
         return torch.optim.Adam(model.parameters(), lr=learning_rate)
     else:
         return Prodigy(model.parameters())
+        # return Prodigy(model.parameters(), safeguard_warmup=True, use_bias_correction=True, weight_decay=0.01)
 
 
 def train_score_network(dataloader, score_net, sde, epochs=epochs):
@@ -87,20 +88,10 @@ def train_score_network(dataloader, score_net, sde, epochs=epochs):
 
 def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs):
     optimizer = get_optimizer(score_net)
-    avg = 0
     device = sde.device
     for epoch in tqdm(range(epochs)):
-
-        if (epoch % 10 == 0):
-            with torch.no_grad():
-                samples = sde.backward_diffusion(
-                    score_net, data_shape=(5, 1, 32, 32)).detach().cpu().numpy()
-            fig, axe = plt.subplots(5)
-            for i in range(5):
-                axe[i].imshow(samples[i][0])
-            plt.show()
-
-        for x, y in dataloader:
+        avg = 0
+        for x, _ in dataloader:
             x = x.to(device)
             optimizer.zero_grad()
             loss = loss_function(score_net, x, sde)
@@ -109,29 +100,29 @@ def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs):
             optimizer.step()
             avg += loss
         print(f'Epoch: {epoch} and Loss: {avg}')
-        avg = 0
+
+        n_examples = 5  # number of examples to generate
+        with torch.no_grad():
+            samples = sde.backward_diffusion(
+                score_net, data_shape=(n_examples, 1, 32, 32)).detach().cpu().numpy()
+
+        _, axes = plt.subplots(1, n_examples)
+
+        for i, ax in enumerate(axes):
+            ax.imshow(samples[i].squeeze())
+            ax.axis('off')
+
+        plt.show()
 
         torch.save(score_net.state_dict(), f'./epoch{epoch}')
 
 
 def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
     optimizer = get_optimizer(score_net)
-    avg = 0
     device = sde.device
     for epoch in tqdm(range(epochs)):
-
-        if (epoch % 10 == 0):
-            with torch.no_grad():
-                samples = sde.backward_diffusion(
-                    score_net, data_shape=(5, 3, 32, 32)).detach().cpu().numpy()
-            samples = samples.swapaxes(1, 2)
-            samples = samples.swapaxes(2, 3)
-            fig, axe = plt.subplots(5)
-            for i in range(5):
-                axe[i].imshow(samples[i])
-            plt.show()
-
-        for x, y in dataloader:
+        avg = 0
+        for x, _ in dataloader:
             x = x.to(device)
             optimizer.zero_grad()
             loss = loss_function(score_net, x, sde)
@@ -140,6 +131,19 @@ def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
             optimizer.step()
             avg += loss
         print(f'Epoch: {epoch} and Loss: {avg}')
-        avg = 0
+
+        n_examples = 5  # number of examples to generate
+        with torch.no_grad():
+            samples = sde.backward_diffusion(
+                score_net, data_shape=(n_examples, 3, 32, 32)).detach().cpu().numpy()
+        samples = samples.swapaxes(1, 2)
+        samples = samples.swapaxes(2, 3)
+        _, axes = plt.subplots(1, n_examples)
+
+        for i, ax in enumerate(axes):
+            ax.imshow(samples[i].squeeze())
+            ax.axis('off')
+
+        plt.show()
 
         torch.save(score_net.state_dict(), f'./epoch{epoch}')
