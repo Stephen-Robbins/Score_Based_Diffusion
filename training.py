@@ -52,8 +52,8 @@ def get_optimizer(model):
     if optimizer == 'adam':
         return torch.optim.Adam(model.parameters(), lr=learning_rate)
     else:
-        return Prodigy(model.parameters())
-        # return Prodigy(model.parameters(), safeguard_warmup=True, use_bias_correction=True, weight_decay=0.01)
+        # return Prodigy(model.parameters())
+        return Prodigy(model.parameters(), safeguard_warmup=True, use_bias_correction=True, weight_decay=0.01)
 
 
 def train_score_network(dataloader, score_net, sde, epochs=epochs):
