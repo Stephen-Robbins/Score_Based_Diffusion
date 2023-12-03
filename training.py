@@ -13,14 +13,6 @@ def load_config(config_path):
         return yaml.safe_load(file)
 
 
-<<<<<<< HEAD
-def loss_function(score_net, x, sde, eps=1e-5):
-    random_t = torch.rand(x.shape[0], device=x.device) * (1. - eps) + eps 
-    z = torch.randn_like(x, device = x.device)
-    mu, std= sde.marginal(x, random_t)
-    perturbed_x=mu+std*z
-    score= score_net(perturbed_x, random_t)
-=======
 config = load_config('config.yaml')
 num_steps = config['num_steps']
 num_samples = config['num_samples']
@@ -40,7 +32,6 @@ def loss_function(score_net, x, sde, eps=1e-5):
     mu, std = sde.marginal(x, random_t)
     perturbed_x = mu+std*z
     score = score_net(perturbed_x, random_t)
->>>>>>> c46bb0fc2c1ea9938b25531f41be428ffca1813a
 
     '''
     Lambda: retrieves appropriate lambda based off of SDE

@@ -8,4 +8,5 @@ epochs: 100000
 num_samples: 500
 num_steps: 1000
 learning_rate: .0001
+optimizer: "adam"
 
