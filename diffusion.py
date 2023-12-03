@@ -154,9 +154,9 @@ class SDE(ABC):
             ## Calculate the gradient with respect to x
             
             pred = classifier_net(x, t1)
-            print('predictions:', torch.argmax(pred, dim = 1))
+            #print('predictions:', torch.argmax(pred, dim = 1))
             pred = torch.log(pred)
-            print(pred.shape, torch.nn.functional.one_hot(classes, num_classes = 10).shape)
+            #print(pred.shape, torch.nn.functional.one_hot(classes, num_classes = 10).shape)
             pred = (torch.nn.functional.one_hot(classes, num_classes = 10) * pred).sum(-1)
             x_grad = [torch.autograd.grad(outputs=out, inputs=x, retain_graph=True)[0][i] for i, out in enumerate(pred)]
 
