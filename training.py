@@ -31,10 +31,13 @@ def loss_function(score_net, x, sde, eps=1e-5):
     Lambda: retrieves appropriate lambda based off of SDE
     '''
     lamb=1/sde.B(random_t)
-    lamb = lamb.unsqueeze(1)
+    lamb = diffusion.match_dim(x, lamb)
+    try:
+        loss = torch.mean(lamb*torch.square((std*score  + z)))
+    except:
+        print(lamb.shape, std.shape, score.shape, z.shape)
+        ## Error catching
 
-    loss = torch.mean(lamb*torch.square((std*score  + z)))
-    
     return loss
 
 def train_score_network(dataloader, score_net, sde, epochs=epochs):
@@ -60,7 +63,6 @@ def train_score_network(dataloader, score_net, sde, epochs=epochs):
             plt.legend()
             plt.show()
 
-
 def train_score_network_mnist(dataloader, score_net, sde, optimizer, epochs=epochs):
     avg=0
     device = sde.device
@@ -72,6 +74,35 @@ def train_score_network_mnist(dataloader, score_net, sde, optimizer, epochs=epoc
             fig, axe = plt.subplots(5)
             for i in range(5):
                 axe[i].imshow(samples[i][0])
+            plt.show()
+
+        for x, y in dataloader:
+            x = x.to(device)
+            optimizer.zero_grad()
+            loss = loss_function(score_net, x, sde)
+            loss.backward()
+            nn.utils.clip_grad_norm_(score_net.parameters(), 1.0)
+            optimizer.step()
+            avg+=loss
+        print(f'Epoch: {epoch} and Loss: {avg}' )
+        avg=0
+
+        torch.save(score_net.state_dict(), f'./epoch{epoch}')
+
+
+def train_score_network_cifar(dataloader, score_net, sde, optimizer, epochs=epochs):
+    avg=0
+    device = sde.device
+    for epoch in range(epochs):
+
+        if(epoch%10==0):
+            with torch.no_grad():
+                samples = sde.backward_diffusion(score_net, data_shape = (5, 3, 32, 32)).detach().cpu().numpy()
+            samples = samples.swapaxes(1,2)
+            samples = samples.swapaxes(2,3)
+            fig, axe = plt.subplots(5)
+            for i in range(5):
+                axe[i].imshow(samples[i])
             plt.show()
 
         for x, y in dataloader:

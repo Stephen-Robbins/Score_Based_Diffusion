@@ -4,6 +4,7 @@ import yaml
 import matplotlib.pyplot as plt
 from abc import ABCMeta, abstractmethod, ABC
 import einops
+from guided_diffusion import cross_entropy_loss_function
 
 
 # Function to load configurations
@@ -128,6 +129,73 @@ class SDE(ABC):
             x = x - (drift - (diffusion**2)*score )*dt + diffusion * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
             
         return x
+    
+    def classifier_guided_backward_diffusion(self, score_net, classifier_net, data_shape = (1000, 2), classes = None):
+        '''
+        Backward diffusion:
+        Score-net: Model to be used
+        Data Shape: (Batch, :) specifies how many samples and what shape for the prior distribution
+        '''
+
+        assert(classes.shape[0] == data_shape[0])
+
+        device = self.device
+        batch_size = data_shape[0]
+        x = self.sample_prior( data_shape ).to(device)
+        dt = torch.tensor(1.0 / self.num_steps).to(device)
+        indices = torch.arange(self.num_steps).to(device)
+        time_steps = 1 + indices / (self.num_steps - 1) * (dt - 1)
+        x.requires_grad = True
+        for t in time_steps:
+            t1=torch.ones(batch_size, device=device) * t 
+            score = score_net(x, t1)  
+            drift, diffusion = self.drift_diffusion(x, t)
+
+            ## Calculate the gradient with respect to x
+            
+            pred = classifier_net(x, t1)
+            print('predictions:', torch.argmax(pred, dim = 1))
+            pred = torch.log(pred)
+            print(pred.shape, torch.nn.functional.one_hot(classes, num_classes = 10).shape)
+            pred = (torch.nn.functional.one_hot(classes, num_classes = 10) * pred).sum(-1)
+            x_grad = [torch.autograd.grad(outputs=out, inputs=x, retain_graph=True)[0][i] for i, out in enumerate(pred)]
+
+            x = x - (drift - (diffusion**2)*(score+torch.stack(x_grad)) )*dt + diffusion * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
+
+            
+        return x
+    
+    def infilling_diffusion(self, score_net, partial_data, mask, data_shape = (1000, 2)):
+        '''
+        Backward diffusion:
+        Score-net: Model to be used
+        Data Shape: (Batch, :) specifies how many samples and what shape for the prior distribution
+
+        X: the original data
+        Mask: the mask specifying what is known in the data
+        '''
+        device = self.device
+        batch_size = data_shape[0]
+        x = self.sample_prior( data_shape ).to(device)
+        dt = torch.tensor(1.0 / self.num_steps).to(device)
+        indices = torch.arange(self.num_steps).to(device)
+        time_steps = 1 + indices / (self.num_steps - 1) * (dt - 1)
+
+        for t in time_steps:
+            t1=torch.ones(batch_size, device=device) * t 
+            score = score_net(x, t1)  
+            drift, diffusion = self.drift_diffusion(x, t)
+            x = x - (drift - (diffusion**2)*score )*dt + diffusion * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
+            
+            # substitute the infilling portion with a valid x
+            mu, std = self.marginal(partial_data, t1)
+            z = torch.randn_like(partial_data, device = x.device)
+            partial = mu + std*z
+            x = x*(1-mask) + mask*partial_data
+
+        return x
+    
+    
 
 class VPSDE(SDE):
 
