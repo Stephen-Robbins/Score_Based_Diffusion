@@ -1,20 +1,9 @@
 import torch
 import numpy as np
-import yaml
 import matplotlib.pyplot as plt
 from abc import ABCMeta, abstractmethod, ABC
 import einops
 from guided_diffusion import cross_entropy_loss_function
-
-
-# Function to load configurations
-def load_config(config_path):
-    with open(config_path, 'r') as file:
-        return yaml.safe_load(file)
-
-# Load the configuration
-config = load_config('config.yaml')
-
 
 def match_dim(x, a):
     '''
