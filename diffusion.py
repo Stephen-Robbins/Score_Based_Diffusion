@@ -245,7 +245,7 @@ class BridgeDiffusionVPSDE(SDE):
     def p(self, x, t, y, T=1):
         t=t.unsqueeze(-1) 
         mu=y*(self.SNR(T)/self.SNR(t))*(self.alpha(t)/self.alpha(T))+self.alpha(t)*x*(1-self.SNR(T)/self.SNR(t))
-        std=self.sigma(t)*torch.sqrt(1.-(self.SNR(T)/self.SNR(t)))
+        std=self.sigma(t)*torch.sqrt(1.0001-(self.SNR(T)/self.SNR(t)))
         return mu, std
 
     def h(self, x,t,y,T=1):
