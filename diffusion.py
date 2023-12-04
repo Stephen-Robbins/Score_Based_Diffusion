@@ -188,11 +188,11 @@ class SDE(ABC):
 
 class VPSDE(SDE):
 
-    def __init__(self, num_steps, bmin, bmax, device = 'cpu'):
-        super().__init__(num_steps, T=1.0, device = device)
+    def __init__(self,  num_steps, bmin, bmax, device = 'cpu'):
+        super().__init__(num_steps,  T=1.0, device = device)
         self.bmin = bmin
         self.bmax = bmax
-        
+    
     def B(self, t):
         b=self.bmin+t*(self.bmax-self.bmin)
         return b
@@ -216,56 +216,120 @@ class VPSDE(SDE):
     def sample_prior(self, shape):
         return torch.randn(shape, device = self.device)
 
-'''
-def forward_diffusion(data):
-    # Convert data to PyTorch tensor if it's not already
-    x = torch.tensor(data, dtype=torch.float32) if not isinstance(data, torch.Tensor) else data
-    x_diffused = [x.numpy()]  # Store the initial data
-    
+class BridgeDiffusionVPSDE(SDE):
+    def __init__(self, data_y, num_steps=1000, num_samples =1000, bmin=.1, bmax=.1, device='cpu'):
+        super().__init__(num_steps, T=1.0, device=device)
+        # Initialize additional parameters for Bridge Diffusion
+        self.bmin = bmin
+        self.bmax = bmax
+        self.data_y=data_y
+        self.num_samples=num_samples
 
-    dt = 1.0 / num_steps  # Calculate the timestep
-
-    indices = np.arange(num_steps)
-    time_steps = 1 + indices / (num_steps - 1) * (dt - 1)
-
-    for t in reversed(time_steps):
-        # Apply the OU process to the data
-        x = x - B(t)/2*x * dt + B(t)**.5 * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
-        x_diffused.append(x.numpy())
-
-    return x_diffused
-
-def plot_forward_diffusion(data):
-    diffused_data = forward_diffusion(data)
-    print()
-
-
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(20, 10)) 
-    times = [(i * int(num_steps)) // 7 for i in range(8)]
-
-    for i, ax in enumerate(axes.flatten()):
-        z = torch.randn_like(data)
-        mu, std=p(data, torch.tensor(times[i]/num_steps).unsqueeze(0)  )
-        px=mu+std*z
-        ax.scatter(px[:, 0], px[:, 1], label=f' P Step {times[i]}')
-        ax.scatter(diffused_data[times[i]][:, 0], diffused_data[times[i]][:, 1], label=f'Step {times[i]}')
-        ax.set_title(f'Diffusion at step {times[i]}')
-        ax.legend()
-        ax.set_aspect('equal') 
-
-    plt.tight_layout() 
-    plt.show()
-
-def backward_diffusion(score_net):
-    x = torch.randn(num_samples, 2) 
-    dt = torch.tensor(1.0 / num_steps)
-    indices = torch.arange(num_steps)
-    time_steps = 1 + indices / (num_steps - 1) * (dt - 1)
-
-    for t in time_steps:
-        t1=torch.ones(num_samples) * t 
-        score = score_net(x, t1)  
-        x = x + (B(t)/2*x + B(t)*score )*dt + B(t)**.5 * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
         
-    return x
-'''
+    def B(self, t):
+        b=self.bmin+t*(self.bmax-self.bmin)
+        return b
+
+    def alpha(self, t):
+        x=self.bmin*t+((self.bmax-self.bmin)*t**2)/2
+        a=np.exp(-x/2)
+        return a
+
+    def sigma(self, t):
+        std=(1-self.alpha(t)**2)**0.5
+        return std
+
+    def SNR(self, t):
+        return self.alpha(t)**2/self.sigma(t)**2
+
+    def p(self, x, t, y, T=1):
+        t=t.unsqueeze(-1) 
+        mu=y*(self.SNR(T)/self.SNR(t))*(self.alpha(t)/self.alpha(T))+self.alpha(t)*x*(1-self.SNR(T)/self.SNR(t))
+        std=self.sigma(t)*torch.sqrt(1.-(self.SNR(T)/self.SNR(t)))
+        return mu, std
+
+    def h(self, x,t,y,T=1):
+        #Correction term for bridge diffusion
+        score=((self.alpha(t)/self.alpha(T))*y-x)/(self.sigma(t)**2*(self.SNR(t)/self.SNR(T)-1))
+        return score
+
+    def g(self, t):
+        #diffusion
+        g=self.B(t)**.5
+        return g
+
+    def f(self, x,t):
+        #drift
+        f=x*-self.B(t)/2
+        return f
+    
+    def drift_diffusion(self, x, t):
+        drift = self.f(x, t)
+        diffusion = self.g(t)
+        return drift, diffusion
+    
+    def sample_prior(self, shape):
+        return self.data_y(shape)
+    
+    def marginal(self, x, time, y):
+        '''
+        Returns: (mu, std) mariginal distribution of the forward diffusion process x at time t
+        '''
+        mu, std = self.p(x, time, y)
+        return mu, match_dim(mu, std)
+
+    def forward_diffusion(self, data_x, data_y):
+        # Convert data to PyTorch tensor if it's not already
+        x = torch.tensor(data_x, dtype=torch.float32) if not isinstance(data_x, torch.Tensor) else data_x
+        y=torch.tensor(data_y, dtype=torch.float32) if not isinstance(data_y, torch.Tensor) else data_y
+        x_diffused = [x.numpy()]  # Store the initial data
+        dt = 1.0 / self.num_steps  # Calculate the timestep
+
+        # Calculate the scaling factor
+        scale_factor = (1 - 0.00001) / (self.num_steps - 1)
+
+        indices = np.arange(self.num_steps)
+        # Scale the indices to the range [0.00001, 1]
+        time_steps = 0.00001 + scale_factor * indices
+        for t in time_steps:
+            x = x + (self.f(x,t)+self.g(t)**2*self.h(x, t, y))*dt+ self.g(t) * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
+            
+            x_diffused.append(x.numpy())
+
+        return x_diffused
+
+    def plot_forward_diffusion(self, data_x):
+        data_y=self.sample_prior(data_x.shape[0])
+        diffused_data = self.forward_diffusion(data_x, data_y)
+        fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(20, 10)) 
+        times = [(i * int(self.num_steps)) // 7 for i in range(8)]
+        for i, ax in enumerate(axes.flatten()):
+            z = torch.randn_like(data_x)
+            mu, std=self.p(data_x, torch.tensor(times[i]/self.num_steps), data_y )
+            px=mu+std*z
+            ax.scatter(px[:, 0], px[:, 1], label=f' P Step {times[i]}')
+            ax.scatter(diffused_data[times[i]][:, 0], diffused_data[times[i]][:, 1], label=f'Step {times[i]}')
+            ax.set_title(f'Diffusion at step {times[i]}')
+            ax.legend()
+            ax.set_aspect('equal') 
+
+        plt.tight_layout() 
+        plt.show()
+
+    def backward_diffusion(self, score_net):
+        device = self.device
+        y=self.sample_prior(self.num_samples)
+        x=y
+        dt = torch.tensor(1.0 /self.num_steps).to(device)
+        indices = torch.arange(self.num_steps).to(device)
+        time_steps = 1 + indices / (self.num_steps - 1) * (dt - 1)
+
+        for t in time_steps:
+            t1=torch.ones(self.num_samples) * t 
+            score = score_net(x, t1, y).to(device)
+            x = x - (self.f(x, t) - self.g(t)**2*(score -self.h(x,t,y)))*dt + self.g(t) * torch.sqrt(torch.tensor(dt)) * torch.randn_like(x)
+            
+        return x
+
+
+

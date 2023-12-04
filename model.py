@@ -30,6 +30,14 @@ class PositionalEmbedding(nn.Module):
 
     def forward(self, x: torch.Tensor):
         return self.layer(x)
+    
+class LearnedEmbedding(nn.Module):
+    def __init__(self, input_dim: int, emb_size: int):
+        super().__init__()
+        self.embedding = nn.Linear(input_dim, emb_size)
+
+    def forward(self, x: torch.Tensor):
+        return self.embedding(x)
 
 
 class Block(nn.Module):
@@ -64,5 +72,29 @@ class MLP(nn.Module):
         x2_emb = self.input_mlp2(x[:, 1])
         t_emb = self.time_mlp(t)
         x = torch.cat((x1_emb, x2_emb, t_emb), dim=-1)
+        x = self.joint_mlp(x)
+        return x
+    
+class Bridge_Diffusion_Net(nn.Module):
+    def __init__(self, input_dim: int, hidden_size: int = 128, hidden_layers: int = 3, emb_size: int = 128):
+        super().__init__()
+
+        self.input_embedding = LearnedEmbedding(input_dim, emb_size)
+        self.condition_embedding =LearnedEmbedding(input_dim, emb_size)
+        self.time_embedding = PositionalEmbedding(emb_size)
+
+
+        concat_size = emb_size + emb_size + emb_size
+        layers = [nn.Linear(concat_size, hidden_size), nn.GELU()]
+        for _ in range(hidden_layers):
+            layers.append(Block(hidden_size))
+        layers.append(nn.Linear(hidden_size, input_dim))  # Modified to output a vector of size input_dim
+        self.joint_mlp = nn.Sequential(*layers)
+
+    def forward(self, x, t, y):
+        x_emb = self.input_embedding(x)
+        y_emb=self.condition_embedding(y)
+        t_emb = self.time_embedding(t)
+        x = torch.cat((x_emb, y_emb, t_emb, ), dim=-1)
         x = self.joint_mlp(x)
         return x

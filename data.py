@@ -15,7 +15,7 @@ num_samples = config['num_samples']
 def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, radius=5.0):
     """
     Generates a mixture of 2D Gaussian distributions around the origin (0,0).
-
+    
     :param num_samples: Total number of samples to generate.
     :param centers: Number of Gaussian centers.
     :param spread: Standard deviation of each Gaussian.
@@ -24,17 +24,22 @@ def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, ra
     """
     data = []
     samples_per_center = num_samples // centers
+    remaining_samples = num_samples - samples_per_center * centers 
+
     angles = np.linspace(0, 2 * np.pi, centers, endpoint=False)
 
-    for angle in angles:
+    for i, angle in enumerate(angles):
+
+        if i == len(angles) - 1:
+            samples_per_center += remaining_samples
+
         # Calculate center of Gaussian
         center_x = radius * np.cos(angle)
         center_y = radius * np.sin(angle)
         center = np.array([center_x, center_y])
 
         # Generate samples for a Gaussian
-        samples = np.random.normal(
-            loc=center, scale=spread, size=(samples_per_center, 2))
+        samples = np.random.normal(loc=center, scale=spread, size=(samples_per_center, 2))
         data.append(samples)
 
     # Concatenate all samples and shuffle
@@ -43,8 +48,7 @@ def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, ra
 
     return torch.tensor(data, dtype=torch.float32)
 
-
-def generate_happy_face(num_samples=1000, spread=0.01):
+def generate_happy_face(num_samples=num_samples, spread=0.01):
     """
     Generates a dataset shaped like a happy face with clearer features.
     :param num_samples: Total number of samples to generate.
@@ -77,7 +81,7 @@ def generate_happy_face(num_samples=1000, spread=0.01):
     data_points.extend(zip(x_right_eye, y_right_eye))
 
     # Smile - semi-circle
-    smile_samples = num_samples // 5
+    smile_samples = num_samples - (face_samples + 2 * eye_samples)
     angles = np.linspace(0.75 * np.pi, 0.25 * np.pi, smile_samples)
     x_smile = -0.85 * np.cos(angles)
     y_smile = -0.85 * np.sin(angles) + 0.35
@@ -90,4 +94,4 @@ def generate_happy_face(num_samples=1000, spread=0.01):
     # Add Gaussian noise
     data += np.random.normal(scale=spread, size=data.shape)
 
-    return torch.tensor(data, dtype=torch.float32)
+    return torch.tensor(data*6, dtype=torch.float32)
