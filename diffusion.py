@@ -1,8 +1,6 @@
 import torch
-import numpy as np
 import matplotlib.pyplot as plt
 from abc import ABCMeta, abstractmethod, ABC
-import einops
 from guided_diffusion import cross_entropy_loss_function
 
 
@@ -24,7 +22,7 @@ class SDE(ABC):
         '''
         super().__init__()
         self.num_steps = num_steps
-        self.T = 1.0
+        self.T = T
         self.device = device
 
     @abstractmethod
@@ -192,17 +190,26 @@ class SDE(ABC):
 
 class VPSDE(SDE):
 
-    def __init__(self,  num_steps, bmin, bmax, device='cpu'):
+    def __init__(self,  num_steps, bmin, bmax, logarithmic_scheduling=False, device='cpu'):
         super().__init__(num_steps,  T=1.0, device=device)
         self.bmin = bmin
         self.bmax = bmax
+        self.logarithmic_scheduling = logarithmic_scheduling
 
     def B(self, t):
-        b = self.bmin+t*(self.bmax-self.bmin)
-        return b
+        if self.logarithmic_scheduling:
+            r = torch.log(torch.tensor(self.bmax / self.bmin)) / self.T
+            return self.bmin * torch.exp(r * t)
+        else:
+            return self.bmin+t*(self.bmax-self.bmin)
 
     def alpha(self, t):
-        x = self.bmin*t+((self.bmax-self.bmin)*t**2)/2
+        x = None
+        if self.logarithmic_scheduling:
+            r = torch.log(torch.tensor(self.bmax / self.bmin)) / self.T
+            x = (self.bmin / r) * (torch.exp(r * t) - 1)
+        else:
+            x = self.bmin*t+((self.bmax-self.bmin)*t**2)/2
         a = torch.exp(-x/2)
         return a
 
@@ -236,7 +243,7 @@ class BridgeDiffusionVPSDE(SDE):
 
     def alpha(self, t):
         x = self.bmin*t+((self.bmax-self.bmin)*t**2)/2
-        a = np.exp(-x/2)
+        a = torch.exp(-x/2)
         return a
 
     def sigma(self, t):
