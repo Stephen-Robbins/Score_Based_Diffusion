@@ -69,4 +69,4 @@ def train_classification_network_mnist(dataloader, class_net, sde, optimizer, ep
         print(f'Epoch: {epoch} and Loss: {avg}' )
         avg=0
 
-        torch.save(class_net.state_dict(), f'./epoch{epoch}')
+        torch.save(class_net.state_dict(), f'./models/MNISTClassifier/epoch{epoch}')

@@ -124,7 +124,7 @@ def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs):
 
         plt.show()
 
-        torch.save(score_net.state_dict(), f'./epoch{epoch}')
+        torch.save(score_net.state_dict(), f'./models/MNIST/epoch{epoch}')
 
 
 def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
@@ -156,4 +156,4 @@ def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
 
         plt.show()
 
-        torch.save(score_net.state_dict(), f'./epoch{epoch}')
+        torch.save(score_net.state_dict(), f'./models/CIFAR/epoch{epoch}')
