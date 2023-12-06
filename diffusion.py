@@ -251,15 +251,17 @@ class BridgeDiffusionVPSDE(SDE):
         return std
 
     def SNR(self, t):
+    
         return self.alpha(t)**2/self.sigma(t)**2
 
-    def p(self, x, t, y, T=1):
+    def p(self, x, t, y, T=torch.tensor(1)):
         t = t.unsqueeze(-1)
+        
         mu = y*(self.SNR(T)/self.SNR(t))*(self.alpha(t)/self.alpha(T)) + self.alpha(t)*x*(1-self.SNR(T)/self.SNR(t))
         std = self.sigma(t)*torch.sqrt(1.-(self.SNR(T)/self.SNR(t)))
         return mu, std
 
-    def h(self, x, t, y, T=1):
+    def h(self, x, t, y, T=torch.tensor(1)):
         # Correction term for bridge diffusion
         score = ((self.alpha(t)/self.alpha(T))*y-x) / (self.sigma(t)**2*(self.SNR(t)/self.SNR(T)-1))
         return score
@@ -298,6 +300,7 @@ class BridgeDiffusionVPSDE(SDE):
         # ensure that the time_steps are larger than 0
         assert torch.all(time_steps > 0), "Time steps should be larger than 0"
         for t in time_steps:
+            t=torch.tensor(t)
             x = x + (self.f(x, t)+self.g(t)**2*self.h(x, t, y))*dt + self.g(t) * torch.sqrt(dt) * torch.randn_like(x)
             x_diffused.append(x.numpy())
 
