@@ -15,7 +15,7 @@ num_samples = config['num_samples']
 def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, radius=5.0):
     """
     Generates a mixture of 2D Gaussian distributions around the origin (0,0).
-    
+
     :param num_samples: Total number of samples to generate.
     :param centers: Number of Gaussian centers.
     :param spread: Standard deviation of each Gaussian.
@@ -24,7 +24,7 @@ def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, ra
     """
     data = []
     samples_per_center = num_samples // centers
-    remaining_samples = num_samples - samples_per_center * centers 
+    remaining_samples = num_samples - samples_per_center * centers
 
     angles = np.linspace(0, 2 * np.pi, centers, endpoint=False)
 
@@ -47,6 +47,7 @@ def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, ra
     np.random.shuffle(data)
 
     return torch.tensor(data, dtype=torch.float32)
+
 
 def generate_happy_face(num_samples=num_samples, spread=0.01):
     """
