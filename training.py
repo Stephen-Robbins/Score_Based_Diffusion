@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import yaml
 from tqdm import tqdm
 from prodigyopt import Prodigy
+from diffusion import match_dim
 
 
 def load_config(config_path):
@@ -27,8 +28,8 @@ def loss_function(score_net, x, sde, eps=1e-5, bridge=False):
     """
     random_t = torch.rand(x.shape[0], device=x.device) * (1. - eps) + eps
     z = torch.randn_like(x, device=x.device)
-    if (bridge==True):
-        y=sde.data_y(x.shape[0])
+    if (bridge == True):
+        y = sde.data_y(x.shape[0])
         mu, std = sde.marginal(x, random_t, y)
         perturbed_x = mu+std*z
         score = score_net(perturbed_x, random_t, y)
@@ -37,15 +38,13 @@ def loss_function(score_net, x, sde, eps=1e-5, bridge=False):
         perturbed_x = mu+std*z
         score = score_net(perturbed_x, random_t)
 
-
     '''
     Lambda: retrieves appropriate lambda based off of SDE
     '''
-    lamb=1/sde.B(random_t)
-    lamb = lamb.unsqueeze(1)
+    lamb = 1/sde.B(random_t)
+    lamb = match_dim(x, lamb)
+    loss = torch.mean(lamb*torch.square((std*score + z)))
 
-    loss = torch.mean(lamb*torch.square((std*score  + z)))
-    
     return loss
 
 
@@ -74,13 +73,12 @@ def train_score_network(dataloader, score_net, sde, epochs=epochs, bridge=False)
             loss = loss_function(score_net, x_batch, sde, bridge=bridge)
             loss.backward()
             # nn.utils.clip_grad_norm_(score_net.parameters(), 1.0)
-            # nn.utils.clip_grad_norm_(score_net.parameters(), 1.0)
             optimizer.step()
-            avg+=loss
+            avg += loss
 
         if ((epoch % 1000 == 0 and epoch != 0) or epoch == epochs-1):
             tqdm.write(f'Epoch: {epoch} and Loss: {avg/(8*1000)}')
-            avg=0
+            avg = 0
             samples = sde.backward_diffusion(score_net)
             data = x_batch.detach().numpy()
             samples_np = samples.detach().numpy()
@@ -152,4 +150,3 @@ def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
         plt.show()
 
         torch.save(score_net.state_dict(), f'./models/CIFAR/epoch{epoch}')
-    
