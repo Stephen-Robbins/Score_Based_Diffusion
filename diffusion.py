@@ -6,10 +6,17 @@ from guided_diffusion import cross_entropy_loss_function
 
 def match_dim(x, a):
     '''
-    Input:
-    X -> (B, ...)
-    a -> (B)
-    Matches a to the shape of b for batch multiplication
+    Match Dimensions for Batch Multiplication. 
+
+    Inputs:
+    - x: Tensor of shape (B, ...) where B is the batch size
+    - a: Tensor of shape (B)
+
+    Returns:
+    - Tensor: Reshaped version of 'a' (by adding singleton dimensions) to match the shape of 'x' for batch multiplication.
+
+    Example:
+    If x.shape = (B, C, H, W) and a.shape = (B), this function will reshape 'a' to have dimensions (B, 1, 1, 1) to match 'x' for batch multiplication.
     '''
     shape = x.shape
     return a.view(-1, *(1,)*(len(shape)-1))
