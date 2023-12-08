@@ -263,12 +263,15 @@ class BridgeDiffusionVPSDE(SDE):
 
     def p(self, x, t, y, T=torch.tensor(1)):
         t = t.unsqueeze(-1)
-        
+        t=match_dim(x, t)
+        T=match_dim(x, T)
         mu = y*(self.SNR(T)/self.SNR(t))*(self.alpha(t)/self.alpha(T)) + self.alpha(t)*x*(1-self.SNR(T)/self.SNR(t))
         std = self.sigma(t)*torch.sqrt(1.-(self.SNR(T)/self.SNR(t)))
         return mu, std
 
     def h(self, x, t, y, T=torch.tensor(1)):
+        t=match_dim(x, t)
+        T=match_dim(x, T)
         # Correction term for bridge diffusion
         score = ((self.alpha(t)/self.alpha(T))*y-x) / (self.sigma(t)**2*(self.SNR(t)/self.SNR(T)-1))
         return score
@@ -331,14 +334,16 @@ class BridgeDiffusionVPSDE(SDE):
         plt.tight_layout()
         plt.show()
 
-    def backward_diffusion(self, score_net):
+    def backward_diffusion(self, score_net, data_shape=(1000, 2)):
         device = self.device
-        y = self.sample_prior(self.num_samples)
+        batch_size = data_shape[0]
+        y = self.sample_prior(batch_size)
         x = y
         dt, time_steps = self.get_dt_time_steps(device=device)
         for t in time_steps:
-            t1 = torch.ones(self.num_samples) * t
-            score = score_net(x, t1, y).to(device)
-            x = x - (self.f(x, t) - self.g(t)**2*(score - self.h(x, t, y))) * dt + self.g(t) * torch.sqrt(dt) * torch.randn_like(x)
-
+            x_and_y = torch.cat((x, y), dim=1)
+            t1 = torch.ones(batch_size, device=device) * t
+            score = score_net(x_and_y, t1)
+            drift, diffusion = self.drift_diffusion(x, t)
+            x = x - (drift - (diffusion**2)*((score)-self.h(x, t, y)))*dt + diffusion * torch.sqrt(dt) * torch.randn_like(x)
         return x

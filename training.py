@@ -32,7 +32,8 @@ def loss_function(score_net, x, sde, eps=1e-5, bridge=False):
         y = sde.data_y(x.shape[0])
         mu, std = sde.marginal(x, random_t, y)
         perturbed_x = mu+std*z
-        score = score_net(perturbed_x, random_t, y)
+        x_and_y = torch.cat((perturbed_x, y), dim=1)
+        score = score_net(x_and_y, random_t, y)
     else:
         mu, std = sde.marginal(x, random_t)
         perturbed_x = mu+std*z
@@ -89,15 +90,16 @@ def train_score_network(dataloader, score_net, sde, epochs=epochs, bridge=False)
             plt.show()
 
 
-def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs):
+def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs, bridge=False):
     optimizer = get_optimizer(score_net)
     device = sde.device
+
     for epoch in tqdm(range(epochs)):
         avg = 0
         for x, _ in dataloader:
             x = x.to(device)
             optimizer.zero_grad()
-            loss = loss_function(score_net, x, sde)
+            loss = loss_function(score_net, x, sde, bridge=bridge)
             loss.backward()
             nn.utils.clip_grad_norm_(score_net.parameters(), 1.0)
             optimizer.step()
