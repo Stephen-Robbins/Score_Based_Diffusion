@@ -246,20 +246,20 @@ class BridgeDiffusionVPSDE(SDE):
 
     def B(self, t):
         b = self.bmin+t*(self.bmax-self.bmin)
-        return b
+        return b.to(self.device)
 
     def alpha(self, t):
         x = self.bmin*t+((self.bmax-self.bmin)*t**2)/2
-        a = torch.exp(-x/2)
+        a = (torch.exp(-x/2)).to(self.device)
         return a
 
     def sigma(self, t):
-        std = (1-self.alpha(t)**2)**0.5
+        std = ((1-self.alpha(t)**2)**0.5).to(self.device)
         return std
 
     def SNR(self, t):
     
-        return self.alpha(t)**2/self.sigma(t)**2
+        return (self.alpha(t)**2/self.sigma(t)**2).to(self.device)
 
     def p(self, x, t, y, T=torch.tensor(1)):
         t = t.unsqueeze(-1)
@@ -267,7 +267,7 @@ class BridgeDiffusionVPSDE(SDE):
         T=match_dim(x, T).to(self.device)
         mu = y*(self.SNR(T)/self.SNR(t))*(self.alpha(t)/self.alpha(T)) + self.alpha(t)*x*(1-self.SNR(T)/self.SNR(t))
         std = self.sigma(t)*torch.sqrt(1.-(self.SNR(T)/self.SNR(t)))
-        return mu, std
+        return mu.to(self.device), std.to(self.device)
 
     def h(self, x, t, y, T=torch.tensor(1)):
         t=match_dim(x, t).to(self.device)
@@ -279,17 +279,16 @@ class BridgeDiffusionVPSDE(SDE):
     def g(self, t):
         # diffusion
         g = self.B(t)**.5
-        return g
-
+        return g.to(self.device)
     def f(self, x, t):
         # drift
         f = x*-self.B(t)/2
-        return f
+        return f.to(self.device)
 
     def drift_diffusion(self, x, t):
         drift = self.f(x, t)
         diffusion = self.g(t)
-        return drift, diffusion
+        return drift.to(self.device), diffusion.to(self.device)
 
     def sample_prior(self, shape):
         return self.data_y(shape).to(self.device)
