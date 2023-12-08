@@ -241,7 +241,7 @@ class BridgeDiffusionVPSDE(SDE):
         # Initialize additional parameters for Bridge Diffusion
         self.bmin = bmin
         self.bmax = bmax
-        self.data_y = data_y.to(device)
+        self.data_y = data_y
         self.num_samples = num_samples
 
     def B(self, t):
@@ -263,7 +263,6 @@ class BridgeDiffusionVPSDE(SDE):
 
     def p(self, x, t, y, T=torch.tensor(1)):
         y=y.to(self.device)
-        x=x.to(self.device)
         t = t.unsqueeze(-1)
         t=match_dim(x, t).to(self.device)
         T=match_dim(x, T).to(self.device)
@@ -299,6 +298,7 @@ class BridgeDiffusionVPSDE(SDE):
         '''
         Returns: (mu, std) mariginal distribution of the forward diffusion process x at time t
         '''
+        y=y.to(self.device)
         mu, std = self.p(x, time, y)
         return mu, match_dim(mu, std)
 
@@ -340,7 +340,16 @@ class BridgeDiffusionVPSDE(SDE):
         batch_size = data_shape[0]
         y = self.sample_prior(batch_size)
         x = y
-        dt, time_steps = self.get_dt_time_steps(device=device)
+        #needed to not start diffusion right at 1, but 1-eps
+        eps=0.0001
+        dt = torch.tensor(self.T / self.num_steps)
+        indices = torch.arange(self.num_steps)
+        if device is not None:
+            dt = dt.to(device)
+            indices = indices.to(device)
+        time_steps = torch.flip((indices + 1) * dt, dims=(0,)) 
+        time_steps = (time_steps * (1 - 2 * eps)) + eps
+        
         for t in time_steps:
             x_and_y = torch.cat((x, y), dim=1)
             t1 = torch.ones(batch_size, device=device) * t

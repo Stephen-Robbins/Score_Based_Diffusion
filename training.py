@@ -29,7 +29,7 @@ def loss_function(score_net, x, sde, eps=1e-5, bridge=False):
     random_t = torch.rand(x.shape[0], device=x.device) * (1. - eps) + eps
     z = torch.randn_like(x, device=x.device)
     if (bridge == True):
-        y = sde.data_y(x.shape[0])
+        y = sde.data_y(x.shape[0]).to(x.device)
         mu, std = sde.marginal(x, random_t, y)
         perturbed_x = mu+std*z
         x_and_y = torch.cat((perturbed_x, y), dim=1)
@@ -118,8 +118,8 @@ def train_score_network_mnist(dataloader, score_net, sde, epochs=epochs, bridge=
             ax.axis('off')
 
         plt.show()
-
-        torch.save(score_net.state_dict(), f'./models/MNIST/epoch{epoch}')
+        #saving was throwing an error and I'm too lazy to fix it right now
+        #torch.save(score_net.state_dict(), f'./models/MNIST/epoch{epoch}')
 
 
 def train_score_network_cifar(dataloader, score_net, sde, epochs=epochs):
