@@ -262,6 +262,8 @@ class BridgeDiffusionVPSDE(SDE):
         return (self.alpha(t)**2/self.sigma(t)**2).to(self.device)
 
     def p(self, x, t, y, T=torch.tensor(1)):
+        y=y.to(self.device)
+        x=x.to(self.device)
         t = t.unsqueeze(-1)
         t=match_dim(x, t).to(self.device)
         T=match_dim(x, T).to(self.device)
