@@ -241,7 +241,7 @@ class BridgeDiffusionVPSDE(SDE):
         # Initialize additional parameters for Bridge Diffusion
         self.bmin = bmin
         self.bmax = bmax
-        self.data_y = data_y
+        self.data_y = data_y.to(device)
         self.num_samples = num_samples
 
     def B(self, t):
