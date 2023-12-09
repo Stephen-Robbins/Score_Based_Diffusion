@@ -357,3 +357,53 @@ class BridgeDiffusionVPSDE(SDE):
             drift, diffusion = self.drift_diffusion(x, t)
             x = x - (drift - (diffusion**2)*((score)-self.h(x, t, y)))*dt + diffusion * torch.sqrt(dt) * torch.randn_like(x)
         return x
+    
+    #############################################################################################
+    # Some functions for plotting diffusion, I'm sure I can make this better when I have more time
+    def backward_diffusion1(self, score_net, data_shape=(1000, 2), plot_steps=None):
+        device = self.device
+        batch_size = data_shape[0]
+        y = self.sample_prior(batch_size)
+        x = y
+        eps = 0.0001
+        dt = torch.tensor(self.T / self.num_steps)
+        indices = torch.arange(self.num_steps)
+        if device is not None:
+            dt = dt.to(device)
+            indices = indices.to(device)
+        time_steps = torch.flip((indices + 1) * dt, dims=(0,))
+        time_steps = (time_steps * (1 - 2 * eps)) + eps
+        
+        x_snapshots = []  # List to store snapshots of x at specified time steps
+
+        for i, t in enumerate(time_steps):
+            x_and_y = torch.cat((x, y), dim=1)
+            t1 = torch.ones(batch_size, device=device) * t
+            score = score_net(x_and_y, t1)
+            drift, diffusion = self.drift_diffusion(x, t)
+            x = x - (drift - (diffusion**2) * (score - self.h(x, t, y))) * dt + diffusion * torch.sqrt(dt) * torch.randn_like(x)
+
+            # Store x at specified time steps
+            if plot_steps is not None and i in plot_steps:
+                x_snapshots.append(x.detach().cpu().numpy())
+
+        return x_snapshots
+
+    # Function to plot the diffusion process
+    def plot_diffusion(self, score_net, data_shape=(5, 1, 32, 32), plot_intervals=[0, 0.25, 0.5, 0.75, 1]):
+        n_examples = data_shape[0]
+        n_steps = self.num_steps
+        plot_steps = [int(ts * n_steps) for ts in plot_intervals]
+
+        with torch.no_grad():
+            samples = self.backward_diffusion1(score_net, data_shape, plot_steps)
+
+            fig, axes = plt.subplots(len(plot_steps), n_examples, figsize=(n_examples * 2, len(plot_steps) * 2))
+            for i, step_samples in enumerate(samples):
+                for j, ax in enumerate(axes[i]):
+                    ax.imshow(step_samples[j].squeeze())
+                    ax.axis('off')
+                    ax.set_title(f"t={plot_intervals[i]:.2f}")
+
+            plt.tight_layout()
+            plt.show()
