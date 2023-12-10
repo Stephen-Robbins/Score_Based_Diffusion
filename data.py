@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import yaml
+import torch.distributions as dist
 
 
 def load_config(config_path):
@@ -10,6 +11,38 @@ def load_config(config_path):
 
 config = load_config('config.yaml')
 num_samples = config['num_samples']
+
+
+def log_likelihood_mixture_gaussians_batch(samples, centers=6, spread=0.5, radius=5.0):
+    """
+    Calculate the log likelihood of a batch of samples in our Gaussian mixture model.
+
+    :param samples: Tensor of shape (batch_size, 2) representing the input batch of samples.
+    :param centers: Number of Gaussian components in the mixture.
+    :param spread: Standard deviation of each Gaussian.
+    :param radius: Radius to space out the Gaussian centers on a circle.
+    :return: Log likelihood of the batch of samples in the Gaussian mixture model.
+    """
+    batch_size = samples.shape[0]
+
+    # Generate means, covariances, and weights for each component
+    angles = np.linspace(0, 2 * np.pi, centers, endpoint=False)
+    means = torch.tensor([[radius * np.cos(angle), radius * np.sin(angle)] for angle in angles])
+    covariances = torch.stack([spread * torch.eye(2) for _ in range(centers)])
+    weights = torch.ones(centers) / centers
+
+    # Create a multivariate normal distribution for each component
+    components = [dist.MultivariateNormal(means[i], covariance_matrix=covariances[i]) for i in range(centers)]
+
+    # Calculate the log likelihood for each sample and each component
+    pdfs = torch.stack([component.log_prob(samples)for component in components], dim=-1)
+
+    # Weight the PDFs by the mixing coefficients and sum them up
+    weighted_pdfs = weights * torch.exp(pdfs)
+    likelihood = torch.sum(weighted_pdfs, dim=-1)
+
+    # Return the log likelihood for the batch
+    return torch.log(likelihood)
 
 
 def generate_mixture_gaussians(num_samples=num_samples, centers=6, spread=.5, radius=5.0):
