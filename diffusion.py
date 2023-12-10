@@ -245,21 +245,12 @@ class BridgeDiffusionVPSDE(SDE):
         self.num_samples = num_samples
 
     def B(self, t):
-        if t <= 0.5:
-            b = self.bmin + 2 * t * (self.bmax - self.bmin)
-        else:
-            b = self.bmax - 2 * (t - 0.5) * (self.bmax - self.bmin)
+        b = self.bmin + ((self.bmax - self.bmin) / 2) * (1 - torch.cos(2 * torch.pi * t))
         return b.to(self.device)
 
     def alpha(self, t):
-        if t <= 0.5:
-            x = self.bmin * t + (self.bmax - self.bmin) * t**2
-        else:
-            # Integral split into two parts: 0 to 0.5 and 0.5 to t
-            first_half = 0.5 * self.bmin + 0.125 * (self.bmax - self.bmin)
-            second_half = self.bmax * (t - 0.5) - (self.bmax - self.bmin) * ((t - 0.5)**2) / 2
-            x = first_half + second_half
-        a = torch.exp(-x / 2).to(self.device)
+        integral = self.bmin * t + ((self.bmax - self.bmin) / 2) * (t - torch.sin(2 * torch.pi * t) / (2 * torch.pi))
+        a = torch.exp(-integral / 2).to(self.device)
         return a
     #trying non linear schedule
     '''
