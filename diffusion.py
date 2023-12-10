@@ -245,6 +245,25 @@ class BridgeDiffusionVPSDE(SDE):
         self.num_samples = num_samples
 
     def B(self, t):
+        if t <= 0.5:
+            b = self.bmin + 2 * t * (self.bmax - self.bmin)
+        else:
+            b = self.bmax - 2 * (t - 0.5) * (self.bmax - self.bmin)
+        return b.to(self.device)
+
+    def alpha(self, t):
+        if t <= 0.5:
+            x = self.bmin * t + (self.bmax - self.bmin) * t**2
+        else:
+            # Integral split into two parts: 0 to 0.5 and 0.5 to t
+            first_half = 0.5 * self.bmin + 0.125 * (self.bmax - self.bmin)
+            second_half = self.bmax * (t - 0.5) - (self.bmax - self.bmin) * ((t - 0.5)**2) / 2
+            x = first_half + second_half
+        a = torch.exp(-x / 2).to(self.device)
+        return a
+    #trying non linear schedule
+    '''
+    def B(self, t):
         b = self.bmin+t*(self.bmax-self.bmin)
         return b.to(self.device)
 
@@ -252,6 +271,7 @@ class BridgeDiffusionVPSDE(SDE):
         x = self.bmin*t+((self.bmax-self.bmin)*t**2)/2
         a = (torch.exp(-x/2)).to(self.device)
         return a
+    '''
 
     def sigma(self, t):
         std = ((1-self.alpha(t)**2)**0.5).to(self.device)
@@ -401,7 +421,7 @@ class BridgeDiffusionVPSDE(SDE):
             fig, axes = plt.subplots(len(plot_steps), n_examples, figsize=(n_examples * 2, len(plot_steps) * 2))
             for i, step_samples in enumerate(samples):
                 for j, ax in enumerate(axes[i]):
-                    ax.imshow(step_samples[j].squeeze())
+                    ax.imshow(step_samples[j].squeeze(), cmap='gray')
                     ax.axis('off')
                     ax.set_title(f"t={plot_intervals[i]:.2f}")
 
