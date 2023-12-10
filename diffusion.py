@@ -369,15 +369,14 @@ class BridgeDiffusionVPSDE(SDE):
             x = x - (drift - (diffusion**2)*((score)-self.h(x, t, y)))*dt + diffusion * torch.sqrt(dt) * torch.randn_like(x)
         return x
     
-    def plot_backward_diffusion(self, data, num_steps=None):
-        diffused_data = self.backward_diffusion(data, num_steps)
+    def plot_backward_diffusion(self, score_net, data_shape=(1000, 2), num_steps=None):
+        diffused_data = self.backward_diffusion(score_net, data_shape)
         num_steps = self.num_steps if num_steps is None else num_steps
 
         fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(20, 10))
         times = [(i * int(num_steps)) // 7 for i in range(8)]
 
         for i, ax in enumerate(axes.flatten()):
-            ax.scatter(px[:, 0], px[:, 1], label=f' P Step {times[i]}')
             ax.scatter(diffused_data[times[i]][:, 0], diffused_data[times[i]][:, 1], label=f'Step {times[i]}')
             ax.set_title(f'Reverse Diffusion at step {times[i]}')
             ax.legend()
@@ -418,7 +417,7 @@ class BridgeDiffusionVPSDE(SDE):
         return x_snapshots
 
     # Function to plot the diffusion process
-    def plot_diffusion(self, score_net, data_shape=(5, 1, 32, 32), plot_intervals=[0, 0.25, 0.5, 0.75, 1]):
+    def plot_diffusion(self, score_net, data_shape=(5, 1, 32, 32), plot_intervals=[0, 0.25, 0.5, 0.75, .99]):
         n_examples = data_shape[0]
         n_steps = self.num_steps
         plot_steps = [int(ts * n_steps) for ts in plot_intervals]
