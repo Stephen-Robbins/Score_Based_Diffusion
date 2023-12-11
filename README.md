@@ -1,7 +1,7 @@
 # Score Based Diffusion
 
 ## Overview
-This repository contains our implementation of score-based diffusion models, developed as part of the course 274E. The project focuses on exploring score-based diffusion processes on 2D data sets, specifically MNIST and CIFAR-10. Beyond the standard score-based diffusion generative models, we look at various applications and extensions, including conditional diffusion, infilling, and diffusion bridges.
+This repository contains our implementation of score-based diffusion models, developed as part of the course CS 274E. The project focuses on exploring score-based diffusion processes on 2D data sets, specifically MNIST and CIFAR-10. Beyond the standard score-based diffusion generative models, we look at various applications and extensions, including conditional diffusion, infilling, and diffusion bridges.
 
 ## Team Members
 - [Tomas Ortega](https://github.com/TomasOrtega)
@@ -30,8 +30,6 @@ This repository contains our implementation of score-based diffusion models, dev
 ![Diffusion Bridge](/img/2dbridge.png)
 
 ## Acknowledgments
-This project was a collaborative effort as part of the course 274E. We would like to thank our course instructors and colleagues for their support and guidance throughout the development of this project.
-
-To play with the code, see the Jupyter notebook `examples.ipynb`.
+We would like to thank our course instructors Stephan Mandt and Prakhar Srivastava for their support and guidance throughout the development of this project.
 
 It is highly recommended to use a GPU for training. If you do not have a GPU, you can use [this MNIST example on Google Colab](https://colab.research.google.com/drive/1e2G_uPZiRbOl2s9oCuVhSptL_Qgb4nLy?usp=sharing).
