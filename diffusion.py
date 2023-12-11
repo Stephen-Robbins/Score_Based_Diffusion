@@ -369,22 +369,7 @@ class BridgeDiffusionVPSDE(SDE):
             x = x - (drift - (diffusion**2)*((score)-self.h(x, t, y)))*dt + diffusion * torch.sqrt(dt) * torch.randn_like(x)
         return x
     
-    def plot_backward_diffusion(self, score_net, data_shape=(1000, 2), num_steps=None):
-        diffused_data = self.backward_diffusion(score_net, data_shape)
-        num_steps = self.num_steps if num_steps is None else num_steps
 
-        fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(20, 10))
-        times = [(i * int(num_steps)) // 7 for i in range(8)]
-
-        for i, ax in enumerate(axes.flatten()):
-            ax.scatter(diffused_data[times[i]][:, 0], diffused_data[times[i]][:, 1], label=f'Step {times[i]}')
-            ax.set_title(f'Reverse Diffusion at step {times[i]}')
-            ax.legend()
-            ax.set_aspect('equal')
-
-        plt.tight_layout()
-        plt.show()
-    
     #############################################################################################
     # Some functions for plotting diffusion, I'm sure I can make this better when I have more time
     def backward_diffusion1(self, score_net, data_shape=(1000, 2), plot_steps=None):
@@ -415,6 +400,67 @@ class BridgeDiffusionVPSDE(SDE):
                 x_snapshots.append(x.detach().cpu().numpy())
 
         return x_snapshots
+    
+    def plot_x_snapshots(x_snapshots, figsize=(15, 3), labels=None):
+        """
+        Plots a row of 2D scatter plots from x_snapshots.
+
+        Parameters:
+        - x_snapshots: List of numpy arrays, each containing 2D points to plot.
+        - figsize: Tuple indicating the size of the figure.
+        - labels: Optional list of labels for each subplot.
+        """
+        num_plots = len(x_snapshots)
+        fig, axes = plt.subplots(1, num_plots, figsize=figsize)
+
+        for i, snapshot in enumerate(x_snapshots):
+            if num_plots > 1:
+                ax = axes[i]
+            else:
+                ax = axes
+
+            ax.scatter(snapshot[:, 0], snapshot[:, 1], alpha=0.6)
+
+            if labels and i < len(labels):
+                ax.set_title(labels[i])
+
+            ax.set_xlabel('X1')
+            ax.set_ylabel('X2')
+
+        plt.tight_layout()
+        plt.show()
+
+    def plot_backward_diffusion(self, score_net, data_shape=(1000, 2), plot_intervals=[0, 0.25, 0.5, 0.75, .99], num_steps=None):
+        #n_examples = data_shape[0]
+        n_steps = self.num_steps
+        plot_steps = [int(ts * n_steps) for ts in plot_intervals]
+
+        with torch.no_grad():
+            samples = self.backward_diffusion1(score_net, data_shape, plot_steps)
+
+            fig, axes = plt.subplots(len(plot_steps), 1, figsize=(1 * 2, len(plot_steps) * 2))
+            
+            for j, ax in enumerate(axes[0]):
+                ax.imshow(step_samples[j].squeeze(), cmap='gray')
+                ax.axis('off')
+                ax.set_title(f"t={plot_intervals[i]:.2f}")
+
+            plt.tight_layout()
+            plt.show()
+
+        
+
+
+
+        for i, ax in enumerate(axes.flatten()):
+            ax.scatter(diffused_data[times[i]][:, 0], diffused_data[times[i]][:, 1], label=f'Step {times[i]}')
+            ax.set_title(f'Reverse Diffusion at step {times[i]}')
+            ax.legend()
+            ax.set_aspect('equal')
+
+        plt.tight_layout()
+        plt.show()
+    
 
     # Function to plot the diffusion process
     def plot_diffusion(self, score_net, data_shape=(5, 1, 32, 32), plot_intervals=[0, 0.25, 0.5, 0.75, .99]):
