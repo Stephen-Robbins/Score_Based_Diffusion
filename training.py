@@ -33,7 +33,7 @@ def loss_function(score_net, x, sde, eps=1e-5, bridge=False):
         mu, std = sde.marginal(x, random_t, y)
         perturbed_x = mu+std*z
         x_and_y = torch.cat((perturbed_x, y), dim=1)
-        score = score_net(x_and_y, random_t, y)
+        score = score_net(x_and_y, random_t)
     else:
         mu, std = sde.marginal(x, random_t)
         perturbed_x = mu+std*z
@@ -42,7 +42,8 @@ def loss_function(score_net, x, sde, eps=1e-5, bridge=False):
     '''
     Lambda: retrieves appropriate lambda based off of SDE
     '''
-    lamb = 1/sde.B(random_t)
+    #lamb = 1/sde.B(random_t)
+    lamb=1/(random_t+.1)
     lamb = match_dim(x, lamb)
     loss = torch.mean(lamb*torch.square((std*score + z)))
 

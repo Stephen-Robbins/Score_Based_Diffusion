@@ -78,25 +78,23 @@ class MLP(nn.Module):
 
 
 class Bridge_Diffusion_Net(nn.Module):
-    def __init__(self, input_dim: int, hidden_size: int = 128, hidden_layers: int = 3, emb_size: int = 128):
+    def __init__(self, input_dim: int, output_dim: int, hidden_size: int = 128, hidden_layers: int = 3, emb_size: int = 128):
         super().__init__()
 
         self.input_embedding = LearnedEmbedding(input_dim, emb_size)
-        self.condition_embedding = LearnedEmbedding(input_dim, emb_size)
         self.time_embedding = PositionalEmbedding(emb_size)
 
-        concat_size = emb_size + emb_size + emb_size
+        concat_size = emb_size + emb_size
         layers = [nn.Linear(concat_size, hidden_size), nn.GELU()]
         for _ in range(hidden_layers):
             layers.append(Block(hidden_size))
-        # Modified to output a vector of size input_dim
-        layers.append(nn.Linear(hidden_size, input_dim))
+        # Modified to output a vector of size output_dim
+        layers.append(nn.Linear(hidden_size, output_dim))
         self.joint_mlp = nn.Sequential(*layers)
 
-    def forward(self, x, t, y):
+    def forward(self, x, t):
         x_emb = self.input_embedding(x)
-        y_emb = self.condition_embedding(y)
         t_emb = self.time_embedding(t)
-        x = torch.cat((x_emb, y_emb, t_emb, ), dim=-1)
+        x = torch.cat((x_emb, t_emb), dim=-1)
         x = self.joint_mlp(x)
         return x
