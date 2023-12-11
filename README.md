@@ -17,6 +17,8 @@ This repository contains our implementation of score-based diffusion models, dev
 - `example_notebooks/`: Jupyter notebooks demonstrating the usage and results of our models.
 
 ## Some Results
+## Cifar
+![Cifar](/img/CIFAR.png)
 
 ### Conditional Diffusion
 
