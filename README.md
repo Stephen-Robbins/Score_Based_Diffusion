@@ -16,6 +16,17 @@ This repository contains our implementation of score-based diffusion models, dev
 - `config.yaml`: Configuration file for model and training parameters.
 - `example_notebooks/`: Jupyter notebooks demonstrating the usage and results of our models.
 
+## Some Results
+
+### Conditional Diffusion
+
+![Conditional Diffusion](/img/conditional_mnist.png)
+
+
+### Diffusion Bridge
+
+![Diffusion Bridge](/img/2dbridge.png)
+
 ## Acknowledgments
 This project was a collaborative effort as part of the course 274E. We would like to thank our course instructors and colleagues for their support and guidance throughout the development of this project.
 
