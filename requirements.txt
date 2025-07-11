@@ -1,0 +1,25 @@
+# Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Numerical computing
+numpy>=1.22.0
+
+# Visualization
+matplotlib>=3.5.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Configuration
+PyYAML>=6.0
+
+# Optimizer
+prodigyopt>=1.0
+
+# External diffusion library
+denoising-diffusion-pytorch>=0.3.0
+
+# Jupyter support (optional)
+jupyter>=1.0.0
+notebook>=6.5.0
